@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Team Vision WebAR</title>
+    
+    <!-- Import Google Fonts for Premium Aesthetics -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- Import A-Frame and MindAR -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <!-- Welcome / Landing Screen Overlay -->
+    <div id="welcome-screen">
+      <div class="glass-card">
+        <h1 class="brand-title">TEAM VISION</h1>
+        <p class="brand-subtitle">Interactive WebAR Experience</p>
+        <button id="start-ar-btn" class="btn-primary">Start AR</button>
+      </div>
+    </div>
+
+    <!-- Tracking Status HUD Overlay -->
+    <div id="status-overlay" class="hidden">
+      <div id="status-text" class="status-searching">Searching for Team Vision...</div>
+    </div>
+
+    <!-- A-Frame Scene (autoStart is false, started programmatically via tracker.js) -->
+    <a-scene mindar-image="imageTargetSrc: ./assets/targets.mind; autoStart: false; uiError: no; filterMinCF:0.0001; filterBeta: 0.001;" 
+             color-space="sRGB" 
+             renderer="colorManagement: true, physicallyCorrectLights" 
+             vr-mode-ui="enabled: false" 
+             device-orientation-permission-ui="enabled: false">
+      
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+      
+      <a-entity mindar-image-target="targetIndex: 0">
+        <!-- 3D testing cube rotating 20cm above the marker -->
+        <a-box id="test-cube" 
+               color="#0066cc" 
+               position="0 0.2 0" 
+               scale="0.15 0.15 0.15" 
+               tv-rotate></a-box>
+      </a-entity>
+    </a-scene>
+
+    <!-- Main Entry Point -->
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>

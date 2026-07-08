@@ -1,0 +1,215 @@
+/*
+ * Team Vision WebAR Style Sheet
+ * Milestone 1 - Premium UI Design
+ */
+
+:root {
+  --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  /* Color Palette */
+  --bg-primary: #050608;
+  --bg-card: rgba(15, 18, 25, 0.7);
+  --border-card: rgba(255, 255, 255, 0.08);
+  
+  --accent-color: #0088ff;
+  --accent-glow: rgba(0, 136, 255, 0.4);
+  --accent-text: #ffffff;
+  
+  --status-searching: #ffcc00;
+  --status-detected: #00cc66;
+  --status-lost: #ff3333;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  font-family: var(--font-family);
+  background-color: var(--bg-primary);
+  color: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Welcome Landing Screen */
+#welcome-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: radial-gradient(circle at center, #0f121d 0%, #050608 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+
+#welcome-screen.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Glassmorphism Card */
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-card);
+  border-radius: 24px;
+  padding: 48px 40px;
+  width: 90%;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.brand-title {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  margin: 0;
+  background: linear-gradient(135deg, #ffffff 30%, #a2cfff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-transform: uppercase;
+}
+
+.brand-subtitle {
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+  text-transform: uppercase;
+}
+
+/* Start AR Premium Button */
+.btn-primary {
+  font-family: var(--font-family);
+  background: var(--accent-color);
+  color: var(--accent-text);
+  border: none;
+  border-radius: 12px;
+  padding: 16px 36px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px var(--accent-glow);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  margin-top: 12px;
+  text-transform: uppercase;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0, 136, 255, 0.6);
+  background: #1a94ff;
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+}
+
+/* Status HUD Overlay */
+#status-overlay {
+  position: fixed;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+#status-overlay.hidden {
+  opacity: 0;
+  display: none !important;
+}
+
+#status-text {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  padding: 12px 24px;
+  border-radius: 30px;
+  text-transform: uppercase;
+  background: rgba(15, 18, 25, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Status Indicator Dots */
+#status-text::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+
+/* Searching State styling */
+.status-searching {
+  color: var(--status-searching);
+  border-color: rgba(255, 204, 0, 0.3) !important;
+}
+.status-searching::before {
+  background-color: var(--status-searching);
+  box-shadow: 0 0 8px var(--status-searching);
+  animation: pulse 1.5s infinite;
+}
+
+/* Detected State styling */
+.status-detected {
+  color: var(--status-detected);
+  border-color: rgba(0, 204, 102, 0.3) !important;
+}
+.status-detected::before {
+  background-color: var(--status-detected);
+  box-shadow: 0 0 8px var(--status-detected);
+}
+
+/* Lost/Error State styling */
+.status-lost {
+  color: var(--status-lost);
+  border-color: rgba(255, 51, 51, 0.3) !important;
+}
+.status-lost::before {
+  background-color: var(--status-lost);
+  box-shadow: 0 0 8px var(--status-lost);
+  animation: pulse 1s infinite;
+}
+
+/* Global Hidden Class */
+.hidden {
+  display: none !important;
+}
+
+/* Pulsing Keyframes */
+@keyframes pulse {
+  0% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.3;
+  }
+}
