@@ -36,11 +36,31 @@ export class TrackerController {
     this.targetEl.addEventListener('targetFound', () => {
       console.log('✔ Target Found');
       this.uiController.updateStatus('detected');
+      
+      // Control video playback on target detection
+      const videoEl = document.querySelector('#intro-video');
+      const videoPlane = document.querySelector('#intro-video-plane');
+      if (videoEl && videoPlane) {
+        videoPlane.setAttribute('visible', 'true');
+        videoEl.currentTime = 0;
+        videoEl.play().catch((err) => {
+          console.warn('Playback block or error:', err);
+        });
+      }
     });
 
     this.targetEl.addEventListener('targetLost', () => {
       console.log('✔ Target Lost');
       this.uiController.updateStatus('lost');
+      
+      // Stop and reset video playback when target is lost
+      const videoEl = document.querySelector('#intro-video');
+      const videoPlane = document.querySelector('#intro-video-plane');
+      if (videoEl && videoPlane) {
+        videoEl.pause();
+        videoEl.currentTime = 0;
+        videoPlane.setAttribute('visible', 'false');
+      }
     });
 
     this.isInitialized = true;
