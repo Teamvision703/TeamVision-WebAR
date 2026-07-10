@@ -21,7 +21,8 @@ export class EffectsController {
       window.AFRAME.registerShader('blackkey', {
         schema: {
           src: { type: 'map', is: 'uniform' },
-          threshold: { type: 'number', default: 0.15, is: 'uniform' }
+          threshold: { type: 'number', default: 0.15, is: 'uniform' },
+          opacity: { type: 'number', default: 1.0, is: 'uniform' }
         },
         raw: false,
         vertexShader: `
@@ -35,6 +36,7 @@ export class EffectsController {
           varying vec2 vUv;
           uniform sampler2D src;
           uniform float threshold;
+          uniform float opacity;
           void main() {
             vec4 texColor = texture2D(src, vUv);
             // Calculate brightness using standard relative luminance formula
@@ -42,7 +44,7 @@ export class EffectsController {
             if (brightness < threshold) {
               discard; // Transparent cutout for black background
             } else {
-              gl_FragColor = texColor;
+              gl_FragColor = vec4(texColor.rgb, texColor.a * opacity);
             }
           }
         `
@@ -102,20 +104,26 @@ export class EffectsController {
                 el.setAttribute('material', {
                   shader: 'blackkey',
                   src: '#intro-video',
-                  threshold: 0.12
+                  threshold: 0.12,
+                  transparent: true,
+                  opacity: 0.0
                 });
               } else {
                 console.log('✔ Non-black background detected. Using standard flat shader.');
                 el.setAttribute('material', {
                   shader: 'flat',
-                  src: '#intro-video'
+                  src: '#intro-video',
+                  transparent: true,
+                  opacity: 0.0
                 });
               }
             } catch (e) {
               // Fallback to flat shader if canvas is tainted/cross-origin issue
               el.setAttribute('material', {
                 shader: 'flat',
-                src: '#intro-video'
+                src: '#intro-video',
+                transparent: true,
+                opacity: 0.0
               });
             }
           };
@@ -132,5 +140,74 @@ export class EffectsController {
         }
       });
     }
+
+    // Register custom A-Frame component for the premium ambient glow
+    if (window.AFRAME && !window.AFRAME.components['ambient-glow']) {
+      window.AFRAME.registerComponent('ambient-glow', {
+        init: function () {
+          const el = this.el;
+          
+          // Generate high-end radial gradient canvas texture
+          const canvas = document.createElement('canvas');
+          canvas.width = 512;
+          canvas.height = 512;
+          const ctx = canvas.getContext('2d');
+          
+          const grad = ctx.createRadialGradient(256, 256, 0, 256, 256, 256);
+          // Center: soft metallic gold
+          grad.addColorStop(0.0, 'rgba(212, 175, 55, 0.45)');
+          // Middle: dark burgundy
+          grad.addColorStop(0.25, 'rgba(128, 0, 32, 0.65)');
+          // Outer: deep maroon
+          grad.addColorStop(0.6, 'rgba(74, 0, 10, 0.85)');
+          // Edge: fully transparent
+          grad.addColorStop(1.0, 'rgba(74, 0, 10, 0.0)');
+          
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, 512, 512);
+          
+          el.setAttribute('material', {
+            shader: 'flat',
+            src: canvas,
+            transparent: true,
+            opacity: 0.0,
+            depthWrite: false
+          });
+
+          el.setAttribute('geometry', {
+            primitive: 'plane',
+            width: 2.2,
+            height: 2.2
+          });
+          
+          // Position slightly behind the video plane
+          el.setAttribute('position', '0 0 0.01');
+          
+          this.time = 0;
+          this.isBreathing = false;
+        },
+        
+        tick: function (time, timeDelta) {
+          if (!this.isBreathing) return;
+          
+          this.time += timeDelta;
+          // Breathing cycle: ~2.8 seconds
+          const cycle = (2 * Math.PI * this.time) / 2800;
+          // Breathing opacity between 0.30 and 0.45
+          const breathingOpacity = 0.375 + Math.sin(cycle) * 0.075;
+          this.el.setAttribute('material', 'opacity', breathingOpacity);
+        },
+        
+        startBreathing: function () {
+          this.isBreathing = true;
+          this.time = 0;
+        },
+        
+        stopBreathing: function () {
+          this.isBreathing = false;
+        }
+      });
+    }
   }
 }
+

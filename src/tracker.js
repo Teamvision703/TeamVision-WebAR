@@ -9,6 +9,11 @@ export class TrackerController {
     this.sceneEl = document.querySelector('a-scene');
     this.targetEl = document.querySelector('[mindar-image-target]');
     this.isInitialized = false;
+
+    // Timing and transition state
+    this.detectionTimeout = null;
+    this.lossTimeout = null;
+    this.isTargetFound = false;
   }
 
   /**
@@ -35,35 +40,148 @@ export class TrackerController {
     // Bind event listeners for target tracking state
     this.targetEl.addEventListener('targetFound', () => {
       console.log('✔ Target Found');
+      this.isTargetFound = true;
+
+      // Flicker protection: If we lost target and found it again within 150ms, cancel fade out
+      if (this.lossTimeout) {
+        clearTimeout(this.lossTimeout);
+        this.lossTimeout = null;
+        console.log('✔ Tracking loss hold cancelled (flicker protection)');
+        this.uiController.updateStatus('detected');
+        return;
+      }
+
       this.uiController.updateStatus('detected');
       
-      // Control video playback on target detection
       const videoEl = document.querySelector('#intro-video');
       const videoPlane = document.querySelector('#intro-video-plane');
-      if (videoEl && videoPlane) {
-        videoPlane.setAttribute('visible', 'true');
-        videoEl.currentTime = 0;
-        videoEl.play().catch((err) => {
-          console.warn('Playback block or error:', err);
+      const glowPlane = document.querySelector('#ambient-glow-plane');
+
+      if (glowPlane) {
+        // Stop any running animations
+        if (glowPlane._animationFrameId) {
+          cancelAnimationFrame(glowPlane._animationFrameId);
+        }
+        const glowComp = glowPlane.components['ambient-glow'];
+        if (glowComp) glowComp.stopBreathing();
+
+        glowPlane.setAttribute('visible', 'true');
+        this.targetEl.setAttribute('visible', 'true');
+
+        // Fade in glow to 0.35 over 300ms
+        this.animateOpacity(glowPlane, 0.35, 300, () => {
+          if (glowComp && this.isTargetFound) {
+            glowComp.startBreathing();
+          }
         });
       }
+
+      // Pre-delay of 200ms before starting video fade-in
+      this.detectionTimeout = setTimeout(() => {
+        if (!this.isTargetFound) return;
+
+        if (videoEl && videoPlane) {
+          if (videoPlane._animationFrameId) {
+            cancelAnimationFrame(videoPlane._animationFrameId);
+          }
+          videoPlane.setAttribute('visible', 'true');
+          
+          // Reset and play
+          videoEl.currentTime = 0;
+          videoEl.play().catch((err) => {
+            console.warn('Playback block or error:', err);
+          });
+
+          // Fade video in over 400ms
+          this.animateOpacity(videoPlane, 1.0, 400);
+        }
+      }, 200);
     });
 
     this.targetEl.addEventListener('targetLost', () => {
-      console.log('✔ Target Lost');
-      this.uiController.updateStatus('lost');
-      
-      // Stop and reset video playback when target is lost
-      const videoEl = document.querySelector('#intro-video');
-      const videoPlane = document.querySelector('#intro-video-plane');
-      if (videoEl && videoPlane) {
-        videoEl.pause();
-        videoEl.currentTime = 0;
-        videoPlane.setAttribute('visible', 'false');
+      console.log('✔ Target Lost event received');
+      this.isTargetFound = false;
+
+      // Cancel detection if it hasn't fired yet
+      if (this.detectionTimeout) {
+        clearTimeout(this.detectionTimeout);
+        this.detectionTimeout = null;
       }
+
+      // Hold current frame for 150ms to prevent visual flickers
+      this.lossTimeout = setTimeout(() => {
+        this.lossTimeout = null;
+        console.log('✔ Hold time elapsed. Fading out entities.');
+        this.uiController.updateStatus('lost');
+        
+        const videoEl = document.querySelector('#intro-video');
+        const videoPlane = document.querySelector('#intro-video-plane');
+        const glowPlane = document.querySelector('#ambient-glow-plane');
+
+        // Keep parent visible during fade out
+        this.targetEl.setAttribute('visible', 'true');
+
+        let fadeOutCount = 0;
+        const totalPlanes = (videoPlane ? 1 : 0) + (glowPlane ? 1 : 0);
+
+        const onFadeOutComplete = () => {
+          fadeOutCount++;
+          if (fadeOutCount >= totalPlanes) {
+            if (videoEl) {
+              videoEl.pause();
+              videoEl.currentTime = 0;
+            }
+            if (videoPlane) videoPlane.setAttribute('visible', 'false');
+            if (glowPlane) glowPlane.setAttribute('visible', 'false');
+            
+            // Finally hide target completely
+            this.targetEl.setAttribute('visible', 'false');
+          }
+        };
+
+        if (glowPlane) {
+          const glowComp = glowPlane.components['ambient-glow'];
+          if (glowComp) glowComp.stopBreathing();
+          this.animateOpacity(glowPlane, 0.0, 400, onFadeOutComplete);
+        }
+
+        if (videoPlane) {
+          this.animateOpacity(videoPlane, 0.0, 400, onFadeOutComplete);
+        }
+      }, 150);
     });
 
     this.isInitialized = true;
+  }
+
+  /**
+   * Helper method to animate standard A-Frame material opacity
+   */
+  animateOpacity(el, targetOpacity, duration, onComplete) {
+    if (el._animationFrameId) {
+      cancelAnimationFrame(el._animationFrameId);
+    }
+
+    const mat = el.getAttribute('material');
+    const startOpacity = mat ? (mat.opacity !== undefined ? mat.opacity : 1.0) : 0.0;
+    const startTime = performance.now();
+
+    const update = (now) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1.0);
+      const currentOpacity = startOpacity + (targetOpacity - startOpacity) * progress;
+
+      el.setAttribute('material', 'opacity', currentOpacity);
+
+      if (progress < 1.0) {
+        el._animationFrameId = requestAnimationFrame(update);
+      } else {
+        el._animationFrameId = null;
+        if (onComplete) onComplete();
+      }
+    };
+
+    el._animationFrameId = requestAnimationFrame(update);
   }
 
   /**

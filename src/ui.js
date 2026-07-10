@@ -9,6 +9,7 @@ export class UIController {
     this.startBtn = document.getElementById('start-ar-btn');
     this.statusOverlay = document.getElementById('status-overlay');
     this.statusText = document.getElementById('status-text');
+    this.fadeTimeout = null;
   }
 
   /**
@@ -40,6 +41,7 @@ export class UIController {
   showStatusOverlay() {
     if (this.statusOverlay) {
       this.statusOverlay.classList.remove('hidden');
+      this.statusOverlay.classList.remove('fade-out');
     }
   }
 
@@ -50,6 +52,17 @@ export class UIController {
   updateStatus(state) {
     if (!this.statusText) return;
 
+    // Reset overlay animations and transitions
+    if (this.fadeTimeout) {
+      clearTimeout(this.fadeTimeout);
+      this.fadeTimeout = null;
+    }
+    
+    if (this.statusOverlay) {
+      this.statusOverlay.classList.remove('fade-out');
+      this.showStatusOverlay();
+    }
+
     switch (state) {
       case 'searching':
         this.statusText.textContent = 'Searching for Team Vision...';
@@ -58,6 +71,13 @@ export class UIController {
       case 'detected':
         this.statusText.textContent = 'Artwork Detected';
         this.statusText.className = 'status-detected';
+        
+        // Remain visible for ~1 second, then fade out completely
+        this.fadeTimeout = setTimeout(() => {
+          if (this.statusOverlay) {
+            this.statusOverlay.classList.add('fade-out');
+          }
+        }, 1000);
         break;
       case 'lost':
         this.statusText.textContent = 'Tracking Lost';
@@ -78,3 +98,4 @@ export class UIController {
     }
   }
 }
+
