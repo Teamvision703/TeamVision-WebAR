@@ -56,9 +56,11 @@ export class TrackerController {
       const videoEl = document.querySelector('#intro-video');
       const videoPlane = document.querySelector('#intro-video-plane');
       const glowPlane = document.querySelector('#ambient-glow-plane');
+      const hudEl = document.querySelector('#hologram-hud');
+      const ringsEl = document.querySelector('#hologram-rings');
+      const particlesEl = document.querySelector('#hologram-particles');
 
       if (glowPlane) {
-        // Stop any running animations
         if (glowPlane._animationFrameId) {
           cancelAnimationFrame(glowPlane._animationFrameId);
         }
@@ -75,6 +77,14 @@ export class TrackerController {
           }
         });
       }
+
+      // Fade in HUD, Rings, Particles immediately when target is detected
+      [hudEl, ringsEl, particlesEl].forEach(layer => {
+        if (layer) {
+          layer.setAttribute('visible', 'true');
+          this.animateGroupOpacity(layer, 1.0, 300);
+        }
+      });
 
       // Pre-delay of 200ms before starting video fade-in
       this.detectionTimeout = setTimeout(() => {
@@ -117,12 +127,22 @@ export class TrackerController {
         const videoEl = document.querySelector('#intro-video');
         const videoPlane = document.querySelector('#intro-video-plane');
         const glowPlane = document.querySelector('#ambient-glow-plane');
+        const hudEl = document.querySelector('#hologram-hud');
+        const ringsEl = document.querySelector('#hologram-rings');
+        const particlesEl = document.querySelector('#hologram-particles');
 
         // Keep parent visible during fade out
         this.targetEl.setAttribute('visible', 'true');
 
         let fadeOutCount = 0;
-        const totalPlanes = (videoPlane ? 1 : 0) + (glowPlane ? 1 : 0);
+        const fadeLayers = [];
+        if (videoPlane) fadeLayers.push(videoPlane);
+        if (glowPlane) fadeLayers.push(glowPlane);
+        if (hudEl) fadeLayers.push(hudEl);
+        if (ringsEl) fadeLayers.push(ringsEl);
+        if (particlesEl) fadeLayers.push(particlesEl);
+
+        const totalPlanes = fadeLayers.length;
 
         const onFadeOutComplete = () => {
           fadeOutCount++;
@@ -133,6 +153,9 @@ export class TrackerController {
             }
             if (videoPlane) videoPlane.setAttribute('visible', 'false');
             if (glowPlane) glowPlane.setAttribute('visible', 'false');
+            if (hudEl) hudEl.setAttribute('visible', 'false');
+            if (ringsEl) ringsEl.setAttribute('visible', 'false');
+            if (particlesEl) particlesEl.setAttribute('visible', 'false');
             
             // Finally hide target completely
             this.targetEl.setAttribute('visible', 'false');
@@ -148,6 +171,12 @@ export class TrackerController {
         if (videoPlane) {
           this.animateOpacity(videoPlane, 0.0, 400, onFadeOutComplete);
         }
+
+        [hudEl, ringsEl, particlesEl].forEach(layer => {
+          if (layer) {
+            this.animateGroupOpacity(layer, 0.0, 400, onFadeOutComplete);
+          }
+        });
       }, 150);
     });
 
@@ -182,6 +211,51 @@ export class TrackerController {
     };
 
     el._animationFrameId = requestAnimationFrame(update);
+  }
+
+  /**
+   * Helper method to animate opacity of a group and all its nested children.
+   */
+  animateGroupOpacity(groupEl, targetOpacity, duration, onComplete) {
+    if (groupEl._animationFrameId) {
+      cancelAnimationFrame(groupEl._animationFrameId);
+    }
+
+    // Collect all elements to animate (the parent group itself and all child elements)
+    const elements = [groupEl, ...Array.from(groupEl.querySelectorAll('*'))];
+    const startOpacities = elements.map(el => {
+      const mat = el.getAttribute('material');
+      return mat ? (mat.opacity !== undefined ? mat.opacity : 1.0) : 0.0;
+    });
+
+    const startTime = performance.now();
+
+    const update = (now) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1.0);
+
+      elements.forEach((el, index) => {
+        const startOpacity = startOpacities[index];
+        // Only modify if it has a material attribute or is a standard text component
+        if (el.getAttribute('material') !== null) {
+          const currentOpacity = startOpacity + (targetOpacity - startOpacity) * progress;
+          el.setAttribute('material', 'opacity', currentOpacity);
+        } else if (el.tagName.toLowerCase() === 'a-text') {
+          // A-Frame text elements handle opacity via the opacity attribute directly
+          const currentOpacity = startOpacity + (targetOpacity - startOpacity) * progress;
+          el.setAttribute('opacity', currentOpacity);
+        }
+      });
+
+      if (progress < 1.0) {
+        groupEl._animationFrameId = requestAnimationFrame(update);
+      } else {
+        groupEl._animationFrameId = null;
+        if (onComplete) onComplete();
+      }
+    };
+
+    groupEl._animationFrameId = requestAnimationFrame(update);
   }
 
   /**

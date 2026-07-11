@@ -60,8 +60,9 @@ export class EffectsController {
           if (!video) return;
 
           const adjustAspectRatio = () => {
-            const width = 1.0; // Normalise to image target width
-            const height = video.videoHeight / video.videoWidth;
+            // Increase transparent video size by approximately 10-15% (we use 1.13)
+            const width = 1.13; 
+            const height = (video.videoHeight / video.videoWidth) * width;
             
             el.setAttribute('geometry', {
               primitive: 'plane',
@@ -69,10 +70,10 @@ export class EffectsController {
               height: height
             });
 
-            // Adjust position so it floats naturally slightly in front of marker (Z-offset to prevent z-fighting)
-            el.setAttribute('position', `0 0 0.02`);
+            // Keep it perfectly centred, move it upward slightly (Y = 0.05) to align with hoodie artwork
+            el.setAttribute('position', `0 0.05 0.08`);
             
-            console.log(`✔ Video loaded: Resolution=${video.videoWidth}x${video.videoHeight}, Aspect Ratio=${(video.videoWidth/video.videoHeight).toFixed(2)}`);
+            console.log(`✔ Video loaded: Resolution=${video.videoWidth}x${video.videoHeight}, Scaled Width=${width}`);
           };
 
           // Detect if video background is black to apply chromakey
@@ -208,6 +209,240 @@ export class EffectsController {
         }
       });
     }
+
+    // Register ring-effects component for rotating rings and orbit circles
+    if (window.AFRAME && !window.AFRAME.components['ring-effects']) {
+      window.AFRAME.registerComponent('ring-effects', {
+        init: function () {
+          const el = this.el;
+
+          // Helper to create rotating ring elements
+          const createRing = (radius, thetaLength, rotationSpeed, opacity, zOffset) => {
+            const ring = document.createElement('a-ring');
+            ring.setAttribute('radius-inner', radius - 0.015);
+            ring.setAttribute('radius-outer', radius + 0.015);
+            ring.setAttribute('theta-length', thetaLength);
+            ring.setAttribute('material', {
+              color: '#D4AF37', // Metallic Gold
+              shader: 'flat',
+              transparent: true,
+              opacity: opacity
+            });
+            ring.setAttribute('position', `0 0 ${zOffset}`);
+            el.appendChild(ring);
+
+            return { el: ring, speed: rotationSpeed, currentRot: 0 };
+          };
+
+          // Helper to create thin full orbit path circles
+          const createOrbitPath = (radius, opacity, zOffset) => {
+            const ring = document.createElement('a-ring');
+            ring.setAttribute('radius-inner', radius - 0.003);
+            ring.setAttribute('radius-outer', radius + 0.003);
+            ring.setAttribute('material', {
+              color: '#D4AF37',
+              shader: 'flat',
+              transparent: true,
+              opacity: opacity
+            });
+            ring.setAttribute('position', `0 0 ${zOffset}`);
+            el.appendChild(ring);
+          };
+
+          // Define rings array to animate in tick function
+          this.rings = [];
+
+          // Z depth order: rings live between Z=0.04 and Z=0.05
+          // Concentric Orbit Circles (very subtle background paths)
+          createOrbitPath(0.38, 0.15, 0.04);
+          createOrbitPath(0.50, 0.20, 0.041);
+          createOrbitPath(0.68, 0.12, 0.042);
+
+          // Rotating Rings: slow movements in opposite directions
+          this.rings.push(createRing(0.38, 120, 15, 0.45, 0.045));
+          this.rings.push(createRing(0.38, 80, -22, 0.35, 0.046));
+          this.rings.push(createRing(0.50, 160, -10, 0.40, 0.047));
+          this.rings.push(createRing(0.50, 60, 18, 0.50, 0.048));
+          this.rings.push(createRing(0.68, 220, 8, 0.30, 0.049));
+          this.rings.push(createRing(0.68, 40, -12, 0.60, 0.05));
+        },
+
+        tick: function (time, timeDelta) {
+          const deltaSec = timeDelta / 1000;
+          this.rings.forEach(ring => {
+            ring.currentRot += ring.speed * deltaSec;
+            ring.el.setAttribute('rotation', `0 0 ${ring.currentRot}`);
+          });
+        }
+      });
+    }
+
+    // Register hud-effects component for Circular Scan Graphics, UI decorations, small boxes, and labels
+    if (window.AFRAME && !window.AFRAME.components['hud-effects']) {
+      window.AFRAME.registerComponent('hud-effects', {
+        init: function () {
+          const el = this.el;
+
+          // Generate HUD Canvas Texture (for fine UI lines, target brackets, data metrics)
+          const canvas = document.createElement('canvas');
+          canvas.width = 512;
+          canvas.height = 512;
+          const ctx = canvas.getContext('2d');
+
+          // Premium HUD line-art graphics
+          ctx.strokeStyle = 'rgba(212, 175, 55, 0.8)';
+          ctx.fillStyle = 'rgba(212, 175, 55, 0.8)';
+          ctx.lineWidth = 1.5;
+
+          // Draw central crosshairs
+          ctx.beginPath();
+          ctx.moveTo(256, 180); ctx.lineTo(256, 210);
+          ctx.moveTo(256, 302); ctx.lineTo(256, 332);
+          ctx.moveTo(180, 256); ctx.lineTo(210, 256);
+          ctx.moveTo(302, 256); ctx.lineTo(332, 256);
+          ctx.stroke();
+
+          // Draw subtle ticks/circles representing circular scan graphics
+          ctx.strokeStyle = 'rgba(212, 175, 55, 0.3)';
+          ctx.beginPath();
+          ctx.arc(256, 256, 120, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Technical UI decorations: Brackets in the corners
+          ctx.strokeStyle = 'rgba(212, 175, 55, 0.9)';
+          ctx.lineWidth = 3.0;
+          const offset = 40;
+          const size = 25;
+          // Top Left
+          ctx.beginPath();
+          ctx.moveTo(offset, offset + size); ctx.lineTo(offset, offset); ctx.lineTo(offset + size, offset);
+          // Top Right
+          ctx.moveTo(512 - offset, offset + size); ctx.lineTo(512 - offset, offset); ctx.lineTo(512 - offset - size, offset);
+          // Bottom Left
+          ctx.moveTo(offset, 512 - offset - size); ctx.lineTo(offset, 512 - offset); ctx.lineTo(offset + size, 512 - offset);
+          // Bottom Right
+          ctx.moveTo(512 - offset, 512 - offset - size); ctx.lineTo(512 - offset, 512 - offset); ctx.lineTo(512 - offset - size, 512 - offset);
+          ctx.stroke();
+
+          // Small technical boxes
+          ctx.lineWidth = 1.0;
+          ctx.fillStyle = 'rgba(212, 175, 55, 0.2)';
+          ctx.fillRect(offset + 10, offset + 10, 10, 10);
+          ctx.strokeRect(offset + 10, offset + 10, 10, 10);
+          ctx.fillRect(512 - offset - 20, offset + 10, 10, 10);
+          ctx.strokeRect(512 - offset - 20, offset + 10, 10, 10);
+
+          // Add a plane to host this canvas texture (Z = 0.02)
+          const hudPlane = document.createElement('a-plane');
+          hudPlane.setAttribute('geometry', {
+            primitive: 'plane',
+            width: 1.6,
+            height: 1.6
+          });
+          hudPlane.setAttribute('material', {
+            shader: 'flat',
+            src: canvas,
+            transparent: true,
+            opacity: 0.6,
+            depthWrite: false
+          });
+          hudPlane.setAttribute('position', '0 0 0.02');
+          el.appendChild(hudPlane);
+
+          // Numeric labels / Technical data text
+          const dataLabel = document.createElement('a-text');
+          dataLabel.setAttribute('value', 'SYS ACTIVE\nSYS.V_092\nTRK_STABLE');
+          dataLabel.setAttribute('align', 'left');
+          dataLabel.setAttribute('color', '#D4AF37');
+          dataLabel.setAttribute('width', 0.9);
+          dataLabel.setAttribute('position', '-0.6 0.5 0.03');
+          el.appendChild(dataLabel);
+
+          const coordLabel = document.createElement('a-text');
+          coordLabel.setAttribute('value', 'LOCK: 34.9082\nALT: 1.05m');
+          coordLabel.setAttribute('align', 'right');
+          coordLabel.setAttribute('color', '#D4AF37');
+          coordLabel.setAttribute('width', 0.9);
+          coordLabel.setAttribute('position', '0.6 -0.5 0.03');
+          el.appendChild(coordLabel);
+
+          this.hudPlane = hudPlane;
+          this.time = 0;
+        },
+
+        tick: function (time, timeDelta) {
+          this.time += timeDelta;
+          // Luxury tech breathing scale & opacity modulation
+          const breathe = 1.0 + Math.sin((2 * Math.PI * this.time) / 4000) * 0.015;
+          this.hudPlane.setAttribute('scale', `${breathe} ${breathe} 1.0`);
+        }
+      });
+    }
+
+    // Register particle-effects component for drifting particles and sparks
+    if (window.AFRAME && !window.AFRAME.components['particle-effects']) {
+      window.AFRAME.registerComponent('particle-effects', {
+        init: function () {
+          const el = this.el;
+          this.particles = [];
+          const particleCount = 20;
+
+          // Create a pool of small, slow metallic gold circle planes
+          for (let i = 0; i < particleCount; i++) {
+            const part = document.createElement('a-circle');
+            part.setAttribute('radius', 0.004 + Math.random() * 0.008);
+            
+            // Random distribution over a flat 2D area (X: -0.6 to 0.6, Y: -0.8 to 0.8)
+            const x = (Math.random() - 0.5) * 1.2;
+            const y = (Math.random() - 0.5) * 1.6;
+            const z = 0.06 + Math.random() * 0.01; // Z layer 0.06 to 0.07
+
+            part.setAttribute('position', `${x} ${y} ${z}`);
+            part.setAttribute('material', {
+              color: '#D4AF37',
+              shader: 'flat',
+              transparent: true,
+              opacity: 0.1 + Math.random() * 0.6,
+              depthWrite: false
+            });
+
+            el.appendChild(part);
+
+            this.particles.push({
+              el: part,
+              x: x,
+              y: y,
+              z: z,
+              speed: 0.04 + Math.random() * 0.08, // Slow upward drift
+              driftX: (Math.random() - 0.5) * 0.02,
+              maxOpacity: 0.2 + Math.random() * 0.6
+            });
+          }
+        },
+
+        tick: function (time, timeDelta) {
+          const deltaSec = timeDelta / 1000;
+          this.particles.forEach(p => {
+            p.y += p.speed * deltaSec;
+            p.x += p.driftX * deltaSec;
+
+            // Reset particle when it floats past screen top limit
+            if (p.y > 0.8) {
+              p.y = -0.8;
+              p.x = (Math.random() - 0.5) * 1.2;
+            }
+
+            // Pulse opacity slightly based on height position
+            const normalizedHeight = (p.y + 0.8) / 1.6; // 0 to 1
+            const opacity = Math.sin(normalizedHeight * Math.PI) * p.maxOpacity;
+
+            p.el.setAttribute('position', `${p.x} ${p.y} ${p.z}`);
+            p.el.setAttribute('material', 'opacity', opacity);
+          });
+        }
+      });
+    }
+
   }
 }
 

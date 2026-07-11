@@ -44,16 +44,26 @@
     device-orientation-permission-ui="enabled: false">
 
     <a-assets>
-      <video id="intro-video" src="./assets/VisionVerticalV2.mp4" preload="auto" loop="false" crossorigin="anonymous"
+      <video id="intro-video" src="./assets/transparent.mp4" preload="auto" loop="false" crossorigin="anonymous"
         playsinline webkit-playsinline muted></video>
     </a-assets>
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
     <a-entity mindar-image-target="targetIndex: 0">
-      <!-- Ambient Glow Plane behind the video -->
+      <!-- 1. Ambient Glow Plane behind everything (Z = 0.01) -->
       <a-entity id="ambient-glow-plane" ambient-glow visible="false"></a-entity>
-      <!-- Cinematic Intro Video plane, initially hidden, customized dynamically via video-handler -->
+
+      <!-- 2. HUD Graphics Layer (Z = 0.02 to 0.03) -->
+      <a-entity id="hologram-hud" hud-effects visible="false"></a-entity>
+
+      <!-- 3. Orbit circles / Rotating rings (Z = 0.04 to 0.05) -->
+      <a-entity id="hologram-rings" ring-effects visible="false"></a-entity>
+
+      <!-- 4. Floating Particles (Z = 0.06 to 0.07) -->
+      <a-entity id="hologram-particles" particle-effects visible="false"></a-entity>
+
+      <!-- 5. Transparent Video Plane in front (Z = 0.08) -->
       <a-entity id="intro-video-plane" video-handler visible="false"></a-entity>
     </a-entity>
   </a-scene>
